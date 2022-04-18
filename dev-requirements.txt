@@ -1,0 +1,4 @@
+-r requirements.txt
+pre-commit~=2.15
+flake8~=4.0
+isort~=5.10

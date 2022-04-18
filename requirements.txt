@@ -1,0 +1,4 @@
+flask==2.1.1
+flask-marshmallow==0.14.0
+python-dotenv==0.19
+flasgger==0.9.5
