@@ -2,3 +2,7 @@ flask==2.1.1
 flask-marshmallow==0.14.0
 python-dotenv==0.19
 flasgger==0.9.5
+SQLAlchemy==1.4.35
+psycopg2-binary==2.9.3
+redis==4.2.2
+marshmallow-sqlalchemy==0.28.0
