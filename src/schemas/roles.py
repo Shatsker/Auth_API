@@ -1,16 +1,20 @@
-from flask_marshmallow import Marshmallow
+from marshmallow import Schema, fields
 
 
-marshmallow = Marshmallow()
-
-
-class RoleSchema(marshmallow.Schema):
+class BaseRoleSchema(Schema):
     """Схема для ролей в системе."""
-    class Meta:
-        fields = ('name', 'permissions')
+    name = fields.Str()
+    permissions = fields.List(fields.Dict(), required=False)
 
 
-class PermissionSchema(marshmallow.Schema):
+class CreateRoleSchema(BaseRoleSchema):
+    """Схема для создания ролей в системе."""
+
+
+class RoleSchema(BaseRoleSchema):
+    """Основная схема ролей в системе."""
+
+
+class PermissionSchema(Schema):
     """Схема для прав в системе."""
-    class Meta:
-        fields = ('name', )
+    name = fields.Str()

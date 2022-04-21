@@ -13,6 +13,7 @@ db_session = scoped_session(
     sessionmaker(
         autoflush=False,
         bind=engine,
+        expire_on_commit=False,
     )
 )
 Base = declarative_base()
