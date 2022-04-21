@@ -1,22 +1,32 @@
-from flask_marshmallow import Marshmallow
+from marshmallow import Schema, fields, validate
 
 
-marshmallow = Marshmallow()
-
-
-class UserSchema(marshmallow.Schema):
+class BaseUserSchema(Schema):
     """Схема для пользователей"""
-    class Meta:
-        fields = ('login', 'password', 'roles')
+    login = fields.Str(required=True, validate=validate.Length(min=8, max=40))
+    password = fields.Str(required=True, validate=validate.Length(min=8, max=70))
+    email = fields.Email()
 
 
-class PersonalUserSchema(marshmallow.Schema):
-    """Схема для персональных данных пользователей."""
-    class Meta:
-        fields = ('user_id', 'phone', 'email', 'first_name', 'middle_name', 'last_name')
+class CreateUserSchema(BaseUserSchema):
+    """Схема создания нового пользователя."""
 
 
-class LoginHistorySchema(marshmallow.Schema):
-    """Схема для истории входа в аккаунт пользователей."""
-    class Meta:
-        fields = ('user_id', 'user_agent', 'auth_datetime')
+class UserSchema(BaseUserSchema):
+    """Основная модель пользователя"""
+    roles = fields.List(fields.Dict())
+
+
+class BaseLoginHistorySchema(Schema):
+    """Базовая схема для истории входа в аккаунт пользователей."""
+    user_agent = fields.Str()
+    auth_datetime = fields.DateTime()
+
+
+class CreateLoginHistory(BaseLoginHistorySchema):
+    """Схема для создания истории входа в аккаунт пользователей."""
+    user_id = fields.UUID()
+
+
+class LoginHistorySchema(BaseLoginHistorySchema):
+    """Основная схема для истории входа в аккаунт пользователей."""
