@@ -1,8 +1,6 @@
 from http import HTTPStatus
 
-from flask import Blueprint
-from flask import request
-from flask import make_response
+from flask import Blueprint, request, make_response
 
 from services.users import UserService
 

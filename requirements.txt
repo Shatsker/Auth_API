@@ -6,3 +6,5 @@ SQLAlchemy==1.4.35
 psycopg2-binary==2.9.3
 redis==4.2.2
 marshmallow-sqlalchemy==0.28.0
+passlib==1.7.4
+flask-jwt-extended==4.3.1
