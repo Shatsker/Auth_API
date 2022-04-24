@@ -2,19 +2,15 @@ from typing import Union
 
 from sqlalchemy.exc import SQLAlchemyError
 from marshmallow.exceptions import ValidationError
+from passlib.hash import pbkdf2_sha256
 
 from db.postgres import db_session
 from models.users import User
 from schemas.users import CreateUserSchema, UserSchema
-from .base import PassworderAbstract
-from .utils import Passworder
 
 
 class UserService:
     """Бизнес-логика для пользователей."""
-
-    def __init__(self, passworder: PassworderAbstract = Passworder):
-        self.passworder = passworder
 
     def get_users(self) -> str:
         """Получаем всех юзеров из БД."""
@@ -25,11 +21,7 @@ class UserService:
         """Создаёт нового пользователя в БД и возвращает его в случае успеха, или ошибку."""
         try:
             user_data = CreateUserSchema().load(data)
-            user_data['password'] = self.passworder.hash_password_with_salt(
-                user_data['password'],
-                user_data['login'],
-            )
-
+            user_data['password'] = pbkdf2_sha256.hash(user_data['password'])
             new_user = User(**user_data)
             db_session.add(new_user)
             db_session.commit()
