@@ -1,20 +1,12 @@
-from marshmallow import Schema, fields
+from pydantic import BaseModel
 
 
-class BaseRoleSchema(Schema):
-    """Схема для ролей в системе."""
-    name = fields.Str()
-    permissions = fields.List(fields.Dict(), required=False)
-
-
-class CreateRoleSchema(BaseRoleSchema):
-    """Схема для создания ролей в системе."""
-
-
-class RoleSchema(BaseRoleSchema):
-    """Основная схема ролей в системе."""
-
-
-class PermissionSchema(Schema):
+class PermissionSchema(BaseModel):
     """Схема для прав в системе."""
-    name = fields.Str()
+    name: str
+
+
+class RoleSchema(BaseModel):
+    """Схема для ролей в системе."""
+    name: str
+    permissions: list[PermissionSchema]
