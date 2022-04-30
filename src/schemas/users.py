@@ -1,32 +1,47 @@
-from marshmallow import Schema, fields, validate
+from uuid import UUID
+
+from pydantic import BaseModel, validator, Field
+
+from .roles import RoleSchema
 
 
-class BaseUserSchema(Schema):
-    """Схема для пользователей"""
-    login = fields.Str(required=True, validate=validate.Length(min=8, max=40))
-    email = fields.Email()
+class BaseUserSchema(BaseModel):
+    """Базовая схема для пользователей"""
+    login: str = Field(min_length=8, max_length=20)
+    email: str = None
 
 
 class CreateUserSchema(BaseUserSchema):
-    """Схема создания нового пользователя."""
-    password = fields.Str(required=True, validate=validate.Length(min=8, max=70))
+    """Схема для создания пользователя."""
+    password: str
+
+    @validator('password')
+    def validate_password(cls, password):
+        """Валидация для пароля пользователя."""
+        if len(password) < 8:
+            raise ValueError('Пароль не может быть меньше 8 символов')
+        if password.isdigit():
+            raise ValueError('Пароль не может состоять только из цифр.')
+        if password.isalpha():
+            raise ValueError('Пароль не может состоять только из букв.')
+        if password.islower():
+            raise ValueError('Пароль не может состоять только из символов нижнего регистра')
+        if password.isupper():
+            raise ValueError('Пароль не может состоять только из символов верхнего регистра.')
+
+        return password
 
 
 class UserSchema(BaseUserSchema):
-    """Основная модель пользователя"""
-    roles = fields.List(fields.Dict())
+    """Схема для пользователей"""
+    roles: list[RoleSchema] = None
+
+    class Config:
+        orm_mode = True
 
 
-class BaseLoginHistorySchema(Schema):
-    """Базовая схема для истории входа в аккаунт пользователей."""
-    user_agent = fields.Str()
-    auth_datetime = fields.DateTime()
-
-
-class CreateLoginHistory(BaseLoginHistorySchema):
-    """Схема для создания истории входа в аккаунт пользователей."""
-    user_id = fields.UUID()
-
-
-class LoginHistorySchema(BaseLoginHistorySchema):
-    """Основная схема для истории входа в аккаунт пользователей."""
+class LoginHistorySchema(BaseModel):
+    """Схема для истории входа в аккаунт пользователя."""
+    user_id: UUID
+    user_agent: str
+    auth_datetime: str = None
