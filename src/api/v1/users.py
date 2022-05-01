@@ -3,7 +3,7 @@ from http import HTTPStatus
 from uuid import UUID
 
 from flask import Blueprint, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic.error_wrappers import ValidationError
 
 from services.users import UserService
@@ -31,7 +31,7 @@ def create_user():
     return UserService().create_user(data), HTTPStatus.CREATED
 
 
-@user_router.route('/api/v1/users/<uuid:user_id>/new_password', methods=('POST', ))
+@user_router.route('/api/v1/users/<uuid:user_id>/new-password', methods=('POST', ))
 @jwt_required()
 def update_user_password(user_id: UUID):
     """Изменение старого пароля пользователя."""
@@ -45,3 +45,13 @@ def update_user_password(user_id: UUID):
     )
 
     return response, HTTPStatus.OK
+
+
+@user_router.route('/api/v1/users/<uuid:user_id>/login-history', methods=('GET', ))
+@jwt_required()
+def get_login_history_of_user(user_id):
+    """Получение истории входа в аккаунт пользователя."""
+    if get_jwt_identity() != str(user_id):
+        abort_error('Получить информацию о истории входа может только ее владелец.')
+
+    return UserService().get_login_history_of_user(user_id), HTTPStatus.OK

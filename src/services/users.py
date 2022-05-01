@@ -6,8 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from passlib.hash import pbkdf2_sha256
 
 from db.postgres import db_session
-from models.users import User
-from schemas.users import UserSchema, CreateUserSchema
+from models.users import User, LoginHistory
+from schemas.users import UserSchema, CreateUserSchema, LoginHistorySchema
 from .mixins import ValidateUserMixin
 from .utils import validate_password, abort_error
 
@@ -56,3 +56,11 @@ class UserService(ValidateUserMixin):
                 db_session.close()
 
         abort_error('Пароль неверный.')
+
+    def get_login_history_of_user(self, user_id: UUID) -> dict:
+        """Получение истории входа пользователя."""
+        login_history = LoginHistory.query.filter_by(user_id=user_id).all()
+        return {
+            'count': len(login_history),
+            'source': [LoginHistorySchema.from_orm(lh).dict() for lh in login_history]
+        }
