@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, validator, Field
@@ -34,6 +35,7 @@ class CreateUserSchema(BaseUserSchema):
 
 class UserSchema(BaseUserSchema):
     """Схема для пользователей"""
+    id: UUID
     roles: list[RoleSchema] = None
 
     class Config:
@@ -42,6 +44,8 @@ class UserSchema(BaseUserSchema):
 
 class LoginHistorySchema(BaseModel):
     """Схема для истории входа в аккаунт пользователя."""
-    user_id: UUID
     user_agent: str
-    auth_datetime: str = None
+    auth_datetime: datetime = None
+
+    class Config:
+        orm_mode = True

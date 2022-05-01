@@ -3,7 +3,7 @@ from http import HTTPStatus
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt
 
-from services.auth import LoginService, TokenService
+from services.auth import AuthService
 
 auth_router = Blueprint('auth_router', __name__)
 
@@ -13,7 +13,7 @@ def login_user():
     """Аутентификация юзера в системе. Обмен логина и пароля на пару jwt токенов."""
     data = request.get_json()
 
-    response = LoginService().login_user(
+    response = AuthService().login_user(
         login=data['login'],
         password=data['password'],
         user_agent=request.user_agent.string,
@@ -29,7 +29,7 @@ def refresh_tokens():
     payload_data = get_jwt()
     old_refresh_token = request.headers.get('Authorization').removeprefix('Bearer ')
 
-    response = TokenService().refresh_tokens(
+    response = AuthService().refresh_tokens(
         sub=payload_data['sub'],
         additional_claims={'roles': payload_data['roles']},
         refresh_token=old_refresh_token,
