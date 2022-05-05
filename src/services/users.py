@@ -10,12 +10,13 @@ from models.users import User, LoginHistory
 from schemas.users import UserSchema, CreateUserSchema, LoginHistorySchema
 from .mixins import ValidateUserMixin
 from .utils import validate_password, abort_error
+from .base import BaseService
 
 
-class UserService(ValidateUserMixin):
+class UserService(BaseService, ValidateUserMixin):
     """Бизнес-логика для пользователей."""
 
-    def get_users(self) -> str:
+    def get_users(self) -> dict:
         """Получаем всех юзеров из БД."""
         users = User.query.all()
         return {
@@ -28,14 +29,7 @@ class UserService(ValidateUserMixin):
         user_data.password = pbkdf2_sha256.hash(user_data.password)
         new_user = User(**user_data.dict())
 
-        try:
-            db_session.add(new_user)
-            db_session.commit()
-            return UserSchema.from_orm(new_user).dict()
-        except IntegrityError as err:
-            abort_error(err.args[0])
-        finally:
-            db_session.close()
+        return self._add_obj_to_db(new_user, UserSchema)
 
     def update_user_password(self, user_id: UUID, current_password: str, new_password: str) -> Union[str, dict]:
         """Обновление пароля юзера."""
@@ -45,15 +39,10 @@ class UserService(ValidateUserMixin):
             try:
                 validate_password(new_password)
                 valid_user.password = pbkdf2_sha256.hash(new_password)
-                db_session.add(valid_user)
-                db_session.commit()
-                return UserSchema.from_orm(valid_user).dict()
-            except IntegrityError as err:
-                abort_error(err.args[0], HTTPStatus.NOT_MODIFIED)
             except ValueError as err:
                 abort_error(err.args[0])
-            finally:
-                db_session.close()
+
+            return self._add_obj_to_db(valid_user, UserSchema, HTTPStatus.NOT_MODIFIED)
 
         abort_error('Пароль неверный.')
 
