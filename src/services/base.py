@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
+from http import HTTPStatus
 
+from pydantic.main import BaseModel
 from sqlalchemy.exc import IntegrityError
 from redis.exceptions import RedisError
 from flask_jwt_extended.utils import create_access_token, create_refresh_token
 
 from models.users import LoginHistory
-from db.postgres import db_session
+from db.postgres import db_session, Base
 from db.redis_db import redis_db
 from core import config
 from .utils import abort_error
@@ -69,23 +71,29 @@ class JwtTokenizer(AbstractTokenizer):
             redis_db.close()
 
 
-class BaseAuthService:
+class BaseService:
+    """Базовый класс для сервисов."""
+
+    def _add_obj_to_db(self, obj: Base, schema: BaseModel = None, err_status: int = HTTPStatus.BAD_REQUEST):
+        """Добавляет объект модели в db и возвращает его."""
+        try:
+            db_session.add(obj)
+            db_session.commit()
+            if schema:
+                return schema.from_orm(obj).dict()
+        except IntegrityError as err:
+            abort_error(err.args[0], err_status)
+        finally:
+            db_session.close()
+
+
+class BaseAuthService(BaseService):
     """Базовый класс для аутентификации."""
 
     def __init__(self, tokenizer: AbstractTokenizer = JwtTokenizer):
         self.tokenizer = tokenizer()
 
-    @staticmethod
-    def _add_new_entry_to_login_history(user_id: str, user_agent: str) -> None:
-        """Добавляем запись в историю входов пользователя."""
-        try:
-            login_history = LoginHistory(
-                user_id=user_id,
-                user_agent=user_agent,
-            )
-            db_session.add(login_history)
-            db_session.commit()
-        except IntegrityError:
-            abort_error('Ошибка целостности данных.')
-        finally:
-            db_session.close()
+    def _add_new_entry_to_login_history(self, user_id: str, user_agent: str) -> None:
+        """Добавляем запись в историю входа пользователя."""
+        login_history = LoginHistory(user_id=user_id, user_agent=user_agent)
+        self._add_obj_to_db(login_history)

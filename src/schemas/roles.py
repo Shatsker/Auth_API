@@ -1,12 +1,25 @@
-from pydantic import BaseModel
+from uuid import UUID
+
+from pydantic.main import BaseModel
+from pydantic.fields import Field
 
 
-class PermissionSchema(BaseModel):
-    """Схема для прав в системе."""
-    name: str
+class BaseRoleSchema(BaseModel):
+    """Базовая схема для ролей в системе."""
+    name: str = Field(max_length=12)
 
 
-class RoleSchema(BaseModel):
+class CreateRoleSchema(BaseRoleSchema):
+    """Схема для создания роли."""
+
+
+class UpdateRoleSchema(BaseRoleSchema):
+    """Схема для создания роли."""
+
+
+class RoleSchema(BaseRoleSchema):
     """Схема для ролей в системе."""
-    name: str
-    permissions: list[PermissionSchema]
+    id: UUID
+
+    class Config:
+        orm_mode = True
