@@ -1,5 +1,6 @@
 import json
 from http import HTTPStatus
+from uuid import UUID
 
 from flask.blueprints import Blueprint
 from flask.globals import request
@@ -41,7 +42,28 @@ def update_role(role_id):
 
 
 @role_router.route('/api/v1/roles/<uuid:role_id>', methods=('DELETE', ))
-def delete_role(role_id):
+def delete_role(role_id: UUID):
     """Удаление существующей роли."""
     RoleService().delete_role(role_id)
     return 'OK', HTTPStatus.NO_CONTENT
+
+
+@role_router.route('/api/v1/roles/<uuid:role_id>/assign-role', methods=('POST', ))
+def assign_role_to_user(role_id: UUID):
+    """Назначение роли для пользователя."""
+    user_id = request.json.get('user_id')
+    response = RoleService().assign_role_to_user(
+        role_id=role_id,
+        user_id=user_id,
+    )
+    return response, HTTPStatus.CREATED
+
+
+@role_router.route('/api/v1/roles/<uuid:role_id>/take-away-role', methods=('POST', ))
+def take_away_role_from_user(role_id: UUID):
+    user_id = request.json.get('user_id')
+    response = RoleService().take_away_role_from_user(
+        role_id=role_id,
+        user_id=user_id,
+    )
+    return response, HTTPStatus.OK

@@ -12,8 +12,8 @@ class BaseUserSchema(BaseModel):
     email: str = None
 
 
-class CreateUserSchema(BaseUserSchema):
-    """Схема для создания пользователя."""
+class PasswordSchemaMixin(BaseModel):
+    """Миксин для поля password, который используется в нескольких схемах."""
     password: str
 
     @validator('password')
@@ -31,6 +31,15 @@ class CreateUserSchema(BaseUserSchema):
             raise ValueError('Пароль не может состоять только из символов верхнего регистра.')
 
         return password
+
+
+class CreateUserSchema(BaseUserSchema, PasswordSchemaMixin):
+    """Схема для создания пользователя."""
+
+
+class ChangePasswordSchema(PasswordSchemaMixin):
+    """Схема для изменения текущего пароля пользователя."""
+    current_password: str
 
 
 class UserSchema(BaseUserSchema):
