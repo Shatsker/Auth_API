@@ -75,14 +75,18 @@ class BaseService:
     """Базовый класс для сервисов."""
 
     def _add_obj_to_db(self, obj: Base, schema: BaseModel = None, err_status: int = HTTPStatus.BAD_REQUEST):
-        """Добавляет объект модели в db и возвращает его."""
+        """Добавляет объект модели в db и возвращает его схему."""
         try:
             db_session.add(obj)
             db_session.commit()
             if schema:
                 return schema.from_orm(obj).dict()
         except IntegrityError as err:
+            db_session.rollback()
             abort_error(err.args[0], err_status)
+        except Exception as err:
+            db_session.rollback()
+            raise err
         finally:
             db_session.close()
 

@@ -7,7 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic.error_wrappers import ValidationError
 
 from services.users import UserService
-from schemas.users import CreateUserSchema
+from schemas.users import CreateUserSchema, ChangePasswordSchema
 from services.utils import abort_error
 
 user_router = Blueprint('user_router', __name__)
@@ -33,15 +33,16 @@ def create_user():
 
 @user_router.route('/api/v1/users/<uuid:user_id>/new-password', methods=('POST', ))
 @jwt_required()
-def update_user_password(user_id: UUID):
+def change_user_password(user_id: UUID):
     """Изменение старого пароля пользователя."""
-    current_password = request.json['current_password']
-    new_password = request.json['new_password']
+    try:
+        data = ChangePasswordSchema(**request.get_json())
+    except ValidationError as err:
+        abort_error(json.loads(err.json()))
 
-    response = UserService().update_user_password(
+    response = UserService().change_user_password(
         user_id,
-        current_password,
-        new_password,
+        data,
     )
 
     return response, HTTPStatus.OK

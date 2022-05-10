@@ -1,7 +1,6 @@
 from typing import Union
 
 from .mixins import ValidateUserMixin
-from .utils import abort_error
 from .base import BaseAuthService
 
 
@@ -11,9 +10,6 @@ class AuthService(BaseAuthService, ValidateUserMixin):
     def login_user(self, login: str, password: str, user_agent: str) -> Union[dict, None]:
         """Проверка существования юзера, пароля, затем выдача access & refresh токенов."""
         valid_user = self._get_validated_user({'login': login}, password)
-
-        if not valid_user:
-            abort_error('Неверный логин или пароль')
 
         tokens = self.tokenizer.get_tokens(
             identity=valid_user.id,
