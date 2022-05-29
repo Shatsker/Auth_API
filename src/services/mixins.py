@@ -1,8 +1,13 @@
+from abc import ABC
 from typing import Union
 from uuid import UUID
 
 from passlib.hash import pbkdf2_sha256
 
+from base.low_level import SqlalchemyORM
+from base.low_level import CacheRedis
+from base.abstract import AbstractORM
+from base.abstract import AbstractCache
 from models.users import User
 from services.utils import abort_error
 
@@ -29,13 +34,67 @@ class ValidateUserMixin:
         return user
 
 
-class GetUserMixin:
-    """Миксин для получения пользователя."""
+class SqlalchemyORMMixin:
+    """Миксин для подмешивания orm sqlalchemy."""
 
-    def _get_user_by_id(self, user_id: UUID) -> User:
-        user = User.query.filter_by(id=user_id).first()
+    def __init__(self, orm: AbstractORM = SqlalchemyORM()):
+        super().__init__()
+        self.orm = orm
 
-        if not user:
-            abort_error('Пользователь не найден.')
 
-        return user
+class CacheRedisMixin:
+    """Миксин для помешивания редиса."""
+
+    def __init__(self, cache_db: AbstractCache = CacheRedis()):
+        super().__init__()
+        self.cache_db = cache_db
+
+
+class GetModelMixin(SqlalchemyORMMixin):
+
+    def get_by_id(self, model_id, model=None):
+        if model is None:
+            model = self.model
+
+        obj = self.orm.get_by_id(model, model_id)
+        if not obj:
+            abort_error('Запись с таким id не существует.')
+
+        return obj
+
+
+class ListModelMixin(SqlalchemyORMMixin):
+
+    def list_all(self):
+        objects = self.orm.get_all(self.model)
+        return {
+            'count': len(objects),
+            'source': [self.schema.from_orm(obj).dict() for obj in objects],
+        }
+
+
+class CreateModelMixin(SqlalchemyORMMixin):
+
+    def create(self, data: dict):
+        new_obj = self.model(**data)
+        return self.orm.add_obj(new_obj, self.schema)
+
+
+class UpdateModelMixin(GetModelMixin, SqlalchemyORMMixin):
+
+    def update(self, update_data: dict, obj_id):
+        obj = self.get_by_id(obj_id)
+
+        for key, value in update_data.items():
+            setattr(obj, key, value)
+
+        return self.orm.add_obj(obj, self.schema)
+
+
+class DeleteModelMixin(GetModelMixin, SqlalchemyORMMixin):
+
+    def delete(self, obj_id):
+        obj = self.get_by_id(obj_id)
+        self.orm.delete_obj(obj)
+
+        return {'success': True}

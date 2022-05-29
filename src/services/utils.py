@@ -12,6 +12,10 @@ def abort_error(message: str, status: int = HTTPStatus.BAD_REQUEST):
     )
 
 
+def get_token_from_header(request):
+    return request.headers.get('Authorization').removeprefix('Bearer ')
+
+
 class JsonResponse(ResponseBase):
     default_mimetype = 'application/json'
     json_module = json
