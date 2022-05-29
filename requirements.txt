@@ -7,3 +7,4 @@ redis==4.2.2
 passlib==1.7.4
 flask-jwt-extended==4.3.1
 pydantic==1.9.0
+pytest==7.1.2
