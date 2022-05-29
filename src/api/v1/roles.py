@@ -6,7 +6,8 @@ from flask.blueprints import Blueprint
 from flask.globals import request
 from pydantic.error_wrappers import ValidationError
 
-from schemas.roles import CreateRoleSchema, UpdateRoleSchema
+from schemas.roles import CreateRoleSchema
+from schemas.roles import UpdateRoleSchema
 from services.roles import RoleService
 from services.utils import abort_error
 
@@ -14,56 +15,34 @@ role_router = Blueprint('role_router', __name__)
 
 
 @role_router.route('/api/v1/roles', methods=('GET', ))
-def get_roles():
+def get_roles(service: RoleService = RoleService()):
     """Получение всех ролей."""
-    return RoleService().get_roles(), HTTPStatus.OK
+    return service.list_all(), HTTPStatus.OK
 
 
 @role_router.route('/api/v1/roles', methods=('POST', ))
-def create_role():
+def create_role(service: RoleService = RoleService()):
     """Создание новой роли."""
     try:
-        data = CreateRoleSchema(**request.json)
+        data = CreateRoleSchema(**request.json).dict()
     except ValidationError as err:
         abort_error(json.loads(err.json()))
 
-    return RoleService().create_role(data), HTTPStatus.CREATED
+    return service.create(data), HTTPStatus.CREATED
 
 
 @role_router.route('/api/v1/roles/<uuid:role_id>', methods=('PATCH', ))
-def update_role(role_id):
+def update_role(role_id, service: RoleService = RoleService()):
     """Обновление существующей роли."""
     try:
-        data = UpdateRoleSchema(**request.json)
+        data = UpdateRoleSchema(**request.json).dict()
     except ValidationError as err:
         abort_error(json.loads(err.json()))
 
-    return RoleService().update_role(data, role_id), HTTPStatus.OK
+    return service.update(data, role_id), HTTPStatus.OK
 
 
 @role_router.route('/api/v1/roles/<uuid:role_id>', methods=('DELETE', ))
-def delete_role(role_id: UUID):
+def delete_role(role_id: UUID, service: RoleService = RoleService()):
     """Удаление существующей роли."""
-    RoleService().delete_role(role_id)
-    return 'OK', HTTPStatus.NO_CONTENT
-
-
-@role_router.route('/api/v1/roles/<uuid:role_id>/assign-role', methods=('POST', ))
-def assign_role_to_user(role_id: UUID):
-    """Назначение роли для пользователя."""
-    user_id = request.json.get('user_id')
-    response = RoleService().assign_role_to_user(
-        role_id=role_id,
-        user_id=user_id,
-    )
-    return response, HTTPStatus.CREATED
-
-
-@role_router.route('/api/v1/roles/<uuid:role_id>/take-away-role', methods=('POST', ))
-def take_away_role_from_user(role_id: UUID):
-    user_id = request.json.get('user_id')
-    response = RoleService().take_away_role_from_user(
-        role_id=role_id,
-        user_id=user_id,
-    )
-    return response, HTTPStatus.OK
+    return service.delete(role_id), HTTPStatus.NO_CONTENT

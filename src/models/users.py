@@ -7,11 +7,12 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from db.postgres import Base
 
-association_table = Table(
+roles_users = Table(
     'roles_users',
     Base.metadata,
     Column('user_id', ForeignKey('users.id', ondelete="CASCADE")),
     Column('role_id', ForeignKey('roles.id')),
+    keep_existing=True
 )
 
 
@@ -23,7 +24,7 @@ class User(Base):
     login = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=True)
-    roles = relationship('Role', secondary=association_table, cascade='all,delete', back_populates="users")
+    roles = relationship('Role', secondary=roles_users, cascade='all,delete', back_populates="users")
 
     def __repr__(self):
         return f'<User: {self.login}>'
