@@ -14,11 +14,44 @@ auth_router = Blueprint('auth_router', __name__)
 
 @auth_router.route('/api/v1/login', methods=('POST',))
 def login_user(service: AuthService = AuthService()):
-    """Аутентификация юзера в системе. Обмен логина и пароля на пару jwt токенов."""
-    data = request.get_json()
+    """Аутентификация юзера в системе. Обмен логина и пароля на пару jwt токенов.
+        ---
+        tags:
+          - Auth
+
+        parameters:
+          - in: formData
+            name: username
+            type: string
+            required: true
+          - in: formData
+            name: password
+            type: string
+            required: true
+
+        definitions:
+          Tokens:
+            type: object
+            properties:
+              access_token:
+                name: access_token
+                type: string
+                description: Access token for accessing to server
+              refresh_token:
+                name: refresh_token
+                type: string
+                description: Refresh token for refreshing tokens
+
+        responses:
+          200:
+            description: Access and refresh tokens
+            schema:
+              $ref: '#/definitions/Tokens'
+        """
+    data = request.form
 
     response = service.login_user(
-        login=data['login'],
+        login=data['username'],
         password=data['password'],
         user_agent=request.user_agent.string,
     )
@@ -29,7 +62,24 @@ def login_user(service: AuthService = AuthService()):
 @auth_router.route('/api/v1/logout', methods=('POST',))
 @jwt_required()
 def logout_user(service: AuthService = AuthService()):
-    """Выход пользователя из системы. Добавляет access токен в redis."""
+    """Выход пользователя из системы. Добавляет access токен в redis.
+        ---
+        tags:
+          - Auth
+
+        parameters:
+          - in: header
+            name: access_token
+            type: string
+            required: true
+
+        responses:
+          200:
+            description: Access and refresh tokens
+            schema:
+              name: message
+              type: string
+        """
     jti = get_jwt()['jti']
 
     response = service.logout_user(
@@ -43,7 +93,27 @@ def logout_user(service: AuthService = AuthService()):
 @auth_router.route('/api/v1/refresh', methods=('POST',))
 @jwt_required(refresh=True)
 def refresh_tokens(service: AuthService = AuthService()):
-    """Обновление токенов юзера. Обмен старого refresh на два свежих jwt токена."""
+    """Обновление токенов юзера. Обмен старого refresh на два свежих jwt токена.
+        ---
+        tags:
+          - Auth
+
+        parameters:
+          - in: header
+            name: access_token
+            type: string
+            required: true
+          - in: header
+            name: refresh_token
+            type: string
+            required: true
+
+        responses:
+          200:
+            description: Access and refresh tokens
+            schema:
+              $ref: '#/definitions/Tokens'
+        """
     payload_data = get_jwt()
     old_refresh_token = get_token_from_header(request)
 
