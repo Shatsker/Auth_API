@@ -10,12 +10,14 @@ from base.abstract import AbstractORM
 from base.abstract import AbstractCache
 from models.users import User
 from services.utils import abort_error
+from tracing import trace
 
 
 class ValidateUserMixin:
     """Миксин для валидации пользователя по паролю."""
     validate_algorithm = pbkdf2_sha256
 
+    @trace
     def _get_validated_user(self, filter_by: dict, password: str) -> Union[User, None]:
         """Проверка существования пользователя, проверка пароля."""
         user = User.query.filter_by(**filter_by).first()
@@ -37,6 +39,7 @@ class ValidateUserMixin:
 class SqlalchemyORMMixin:
     """Миксин для подмешивания orm sqlalchemy."""
 
+    @trace
     def __init__(self, orm: AbstractORM = SqlalchemyORM()):
         super().__init__()
         self.orm = orm
@@ -45,6 +48,7 @@ class SqlalchemyORMMixin:
 class CacheRedisMixin:
     """Миксин для помешивания редиса."""
 
+    @trace
     def __init__(self, cache_db: AbstractCache = CacheRedis()):
         super().__init__()
         self.cache_db = cache_db
@@ -52,6 +56,7 @@ class CacheRedisMixin:
 
 class GetModelMixin(SqlalchemyORMMixin):
 
+    @trace
     def get_by_id(self, model_id, model=None):
         if model is None:
             model = self.model
@@ -65,6 +70,7 @@ class GetModelMixin(SqlalchemyORMMixin):
 
 class ListModelMixin(SqlalchemyORMMixin):
 
+    @trace
     def list_all(self):
         objects = self.orm.get_all(self.model)
         return {
@@ -75,6 +81,7 @@ class ListModelMixin(SqlalchemyORMMixin):
 
 class CreateModelMixin(SqlalchemyORMMixin):
 
+    @trace
     def create(self, data: dict):
         new_obj = self.model(**data)
         return self.orm.add_obj(new_obj, self.schema)
@@ -82,6 +89,7 @@ class CreateModelMixin(SqlalchemyORMMixin):
 
 class UpdateModelMixin(GetModelMixin, SqlalchemyORMMixin):
 
+    @trace
     def update(self, update_data: dict, obj_id):
         obj = self.get_by_id(obj_id)
 
@@ -93,6 +101,7 @@ class UpdateModelMixin(GetModelMixin, SqlalchemyORMMixin):
 
 class DeleteModelMixin(GetModelMixin, SqlalchemyORMMixin):
 
+    @trace
     def delete(self, obj_id):
         obj = self.get_by_id(obj_id)
         self.orm.delete_obj(obj)

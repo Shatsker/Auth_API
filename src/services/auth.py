@@ -3,11 +3,13 @@ from datetime import timedelta
 
 from .mixins import ValidateUserMixin
 from base.base import BaseAuthService
+from tracing import trace
 
 
 class AuthService(BaseAuthService, ValidateUserMixin):
     """Логика для аутентификации пользователя."""
 
+    @trace
     def login_user(self, login: str, password: str, user_agent: str) -> Union[dict, None]:
         """
         Проверка существования юзера, пароля,
@@ -30,6 +32,7 @@ class AuthService(BaseAuthService, ValidateUserMixin):
 
         return tokens
 
+    @trace
     def logout_user(self, jti: str, time: timedelta):
         """
         Добавляет access токен в редис, чтобы знать,
@@ -41,6 +44,7 @@ class AuthService(BaseAuthService, ValidateUserMixin):
             'expiry_time': time.seconds,
         }
 
+    @trace
     def refresh_tokens(self, sub: str, refresh_token: str, additional_claims: dict):
         """
         Обновляет токены пользователя, взамен на старый refresh токен.

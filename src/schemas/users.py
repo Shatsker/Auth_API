@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, validator, Field
 
+from tracing import trace
 from .roles import RoleSchema
 
 
@@ -16,6 +17,7 @@ class PasswordSchemaMixin(BaseModel):
     """Миксин для поля password, который используется в нескольких схемах."""
     password: str
 
+    @trace
     @validator('password')
     def validate_password(cls, password):
         """Валидация для пароля пользователя."""

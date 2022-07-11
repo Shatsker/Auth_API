@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from db.redis_db import redis_db
 from db.postgres import db_session
 from core import config
+from tracing import trace
 from services.utils import abort_error
 from .abstract import AbstractTokenizer
 from .abstract import AbstractCache
@@ -18,6 +19,8 @@ from .abstract import AbstractORM
 
 class CacheRedis(AbstractCache):
     """Класс для работы с redis."""
+
+    @trace
     def set_with_expiry(
             self,
             key,
@@ -39,6 +42,7 @@ class CacheRedis(AbstractCache):
         finally:
             redis_db.close()
 
+    @trace
     def get_by_key(self, key, err_text='Ошибка получения кеша.'):
         """Получение значения в redis по ключу.
             В случае чего выкидывает http ошибку.
@@ -54,9 +58,11 @@ class CacheRedis(AbstractCache):
 class JwtTokenizer(AbstractTokenizer):
     """Класс для работы с jwt токенами."""
 
+    @trace
     def __init__(self, cache_db: AbstractCache = CacheRedis()):
         self.cache_db = cache_db
 
+    @trace
     def get_tokens(self, identity: str, additional_claims: dict) -> dict:
         """Получение access и refresh токенов для юзера."""
         tokens = {
@@ -72,6 +78,7 @@ class JwtTokenizer(AbstractTokenizer):
 
         return tokens
 
+    @trace
     def refresh_tokens(self, sub: str, refresh_token: str, additional_claims: dict):
         """Проверят присутствие refresh токена в redis'е, а потом возвращает новые токены."""
         is_verified = self.verify_refresh_token_in_redis(sub, refresh_token)
@@ -81,6 +88,7 @@ class JwtTokenizer(AbstractTokenizer):
 
         abort_error('Токен невалиден.')
 
+    @trace
     def verify_refresh_token_in_redis(self, key: str, refresh_token: str):
         """Проверят нахождение refresh токена в redis'е"""
         err_text = 'Ошибка проверки токена'
@@ -90,18 +98,23 @@ class JwtTokenizer(AbstractTokenizer):
 class SqlalchemyORM(AbstractORM):
     """Класс для работы с ORM sqlalchemy"""
 
+    @trace
     def __init__(self, session=db_session):
         self.session = session
 
+    @trace
     def get_all(self, model):
         return model.query.all()
 
+    @trace
     def get_all_by_filter(self, model, filter_: dict):
         return model.query.filter_by(**filter_).all()
 
+    @trace
     def get_by_id(self, model, id_):
         return model.query.filter_by(id=id_).first()
 
+    @trace
     def add_obj(self, obj, schema=None):
         try:
             self.session.add(obj)
@@ -113,6 +126,7 @@ class SqlalchemyORM(AbstractORM):
         finally:
             self.session.close()
 
+    @trace
     def delete_obj(self, obj):
         try:
             self.session.delete(obj)
@@ -120,6 +134,7 @@ class SqlalchemyORM(AbstractORM):
         finally:
             self.session.close()
 
+    @trace
     def add_to_many_to_many(self, m2m_table, ids: dict):
         try:
             statement = m2m_table.insert().values(**ids)
@@ -128,6 +143,7 @@ class SqlalchemyORM(AbstractORM):
         finally:
             self.session.close()
 
+    @trace
     def remove_from_many_to_many(self, m2m_table, first_id: tuple, second_id: tuple):
         try:
             attr_first_id = getattr(m2m_table.c, first_id[0])

@@ -2,3 +2,7 @@
 pre-commit~=2.15
 flake8~=4.0
 isort~=5.10
+opentelemetry-api==1.10.0
+opentelemetry-sdk==1.10.0
+opentelemetry-instrumentation-flask==0.29b1
+opentelemetry-exporter-jaeger==1.10.0
