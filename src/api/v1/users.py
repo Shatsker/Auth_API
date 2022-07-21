@@ -145,9 +145,9 @@ def change_user_password(user_id: UUID, service: UserService = UserService()):
     return response, HTTPStatus.OK
 
 
-@user_router.route('/api/v1/users/<uuid:user_id>/login-history', methods=('GET', ))
+@user_router.route('/api/v1/users/login-history', methods=('GET', ))
 @jwt_required()
-def get_login_history_of_user(user_id, service: UserService = UserService()):
+def get_login_history_of_user(service: UserService = UserService()):
     """Получение истории входа в аккаунт пользователя.
         ---
         tags:
@@ -159,21 +159,13 @@ def get_login_history_of_user(user_id, service: UserService = UserService()):
             type: string
             required: true
 
-          - in: path
-            name: user_id
-            type: string
-            required: true
-
         responses:
           200:
             description: Got login history
             schema:
               $ref: '#/definitions/LoginHistory'
         """
-    if get_jwt_identity() != str(user_id):
-        abort_error('Получить информацию о истории входа может только ее владелец.')
-
-    return service.get_login_history_of_user(user_id), HTTPStatus.OK
+    return service.get_login_history_of_user(get_jwt_identity()), HTTPStatus.OK
 
 
 @user_router.route('/api/v1/users/<uuid:role_id>/roles', methods=('POST', ))

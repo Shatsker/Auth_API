@@ -1,4 +1,5 @@
 import os
+from datetime import datetime as dt
 
 from flask import Flask
 from flask import request
@@ -30,11 +31,11 @@ def configure_tracer() -> None:
             )
         )
     )
-    trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(
-            ConsoleSpanExporter()
-        )
-    )
+    # trace.get_tracer_provider().add_span_processor(
+    #     BatchSpanProcessor(
+    #         ConsoleSpanExporter()
+    #     )
+    # )
 
 
 def create_app():
@@ -81,6 +82,19 @@ def check_if_exists_x_request_id_in_request_header():
 
     if not request_id:
         raise RuntimeError('request id is required')
+
+
+@app.before_request
+def rate_limit_for_user():
+    """Проверяет rate limit для пользователя."""
+    from base.low_level import CacheRedis
+    from services.utils import abort_error
+
+    user_key = '{}.{}'.format('user_id', dt.now().minute)
+    number_of_user_requests_per_minute = CacheRedis().set_counter_or_increment(user_key, time=59)
+
+    if int(number_of_user_requests_per_minute) > 10:
+        abort_error('to many request', status=429)
 
 
 if __name__ == '__main__':

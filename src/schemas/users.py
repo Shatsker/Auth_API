@@ -46,7 +46,7 @@ class ChangePasswordSchema(PasswordSchemaMixin):
 
 class UserSchema(BaseUserSchema):
     """Схема для пользователей"""
-    id: UUID
+    id: int
     roles: list[RoleSchema] = None
 
     class Config:

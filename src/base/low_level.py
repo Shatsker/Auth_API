@@ -1,5 +1,7 @@
 from typing import Union
 from datetime import timedelta
+from functools import wraps
+from time import sleep
 
 from redis.exceptions import RedisError
 from flask_jwt_extended.utils import create_access_token
@@ -17,42 +19,87 @@ from .abstract import AbstractCache
 from .abstract import AbstractORM
 
 
+def backoff(
+        start_sleep_time: int = 0.1,
+        factor: int = 2,
+        border_sleep_time: int = 20,
+        exceptions: tuple = (Exception, ),
+):
+    """
+    Функция для повторного выполнения функции через некоторое время, если возникла ошибка.
+    Использует наивный экспоненциальный рост времени повтора (factor)
+    до граничного времени ожидания (border_sleep_time)
+
+    Формула:
+        time_of_callback = start_sleep_time * factor if t < border_sleep_time
+        time_of_callback = border_sleep_time if t >= border_sleep_time
+    :param start_sleep_time: начальное время повтора
+    :param factor: во сколько раз нужно увеличить время ожидания
+    :param border_sleep_time: граничное время ожидания
+    :param exceptions: список ошибок которые будет ловить backoff
+    :return: результат выполнения функции
+    """
+
+    def func_wrapper(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            time_of_callback = start_sleep_time
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions:
+                    sleep(time_of_callback)
+                    time_of_callback *= factor
+
+                    if time_of_callback >= border_sleep_time:
+                        time_of_callback = border_sleep_time
+                        abort_error('Something was going wrong')
+                    continue
+        return inner
+
+    return func_wrapper
+
+
 class CacheRedis(AbstractCache):
     """Класс для работы с redis."""
 
+    @backoff(exceptions=(RedisError, ))
     @trace
     def set_with_expiry(
             self,
             key,
             value,
             time: Union[float, timedelta],
-            err_text='Ошибка записи в кеш',
     ) -> None:
         """Устанавливает значение по ключу в редис на время.
             В случае чего выкидывает http ошибку.
         """
-        try:
-            redis_db.setex(
-                name=key,
-                value=value,
-                time=time,
-            )
-        except RedisError:
-            abort_error(err_text)
-        finally:
-            redis_db.close()
+        redis_db.setex(
+            name=key,
+            value=value,
+            time=time,
+        )
 
+    @backoff(exceptions=(RedisError, ))
     @trace
-    def get_by_key(self, key, err_text='Ошибка получения кеша.'):
+    def get_by_key(self, key):
         """Получение значения в redis по ключу.
             В случае чего выкидывает http ошибку.
         """
-        try:
-            return redis_db.get(name=key)
-        except RedisError:
-            abort_error(err_text)
-        finally:
-            redis_db.close()
+        return redis_db.get(name=key)
+
+    @backoff(exceptions=(RedisError, ))
+    @trace
+    def set_counter_or_increment(self, key, time: Union[float, timedelta]):
+        value = redis_db.get(key)
+
+        if value:
+            redis_db.incrby(key, 1)
+        else:
+            value = 1
+            self.set_with_expiry(key, value, time)
+
+        return value
 
 
 class JwtTokenizer(AbstractTokenizer):
@@ -122,7 +169,7 @@ class SqlalchemyORM(AbstractORM):
             if schema:
                 return schema.from_orm(obj).dict()
         except IntegrityError:
-            abort_error('Ошибка записи в БД.')
+            abort_error('add db error')
         finally:
             self.session.close()
 
@@ -154,5 +201,18 @@ class SqlalchemyORM(AbstractORM):
             )
             self.session.execute(statement)
             self.session.commit()
+        finally:
+            self.session.close()
+
+    @trace
+    def create_new_list_partition(self, table_name, partition_name, value):
+        try:
+            self.session.execute(
+                """
+                CREATE TABLE IF NOT EXISTS "{}" 
+                PARTITION OF "{}" 
+                FOR VALUES IN ('{}')
+                """.format(partition_name, table_name, value)
+            )
         finally:
             self.session.close()
