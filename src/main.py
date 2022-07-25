@@ -5,6 +5,8 @@ from flask import Flask
 from flask import request
 from flasgger import Swagger
 from flask_jwt_extended import JWTManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -31,11 +33,11 @@ def configure_tracer() -> None:
             )
         )
     )
-    # trace.get_tracer_provider().add_span_processor(
-    #     BatchSpanProcessor(
-    #         ConsoleSpanExporter()
-    #     )
-    # )
+    trace.get_tracer_provider().add_span_processor(
+        BatchSpanProcessor(
+            ConsoleSpanExporter()
+        )
+    )
 
 
 def create_app():
@@ -45,13 +47,14 @@ def create_app():
 
     swagger = Swagger(app)
     jwt = JWTManager(app)
+    limiter = Limiter(app, key_func=get_remote_address, default_limits=[os.getenv('RATE_LIMIT_PER_MINUTE')])
     FlaskInstrumentor().instrument_app(app)
 
     app.register_blueprint(user_router)
     app.register_blueprint(auth_router)
     app.register_blueprint(role_router)
 
-    return app, swagger, jwt
+    return app, swagger, jwt, limiter
 
 
 def main(app):
@@ -65,7 +68,7 @@ def main(app):
 
 
 configure_tracer()
-app, swagger, jwt = create_app()
+app, swagger, jwt, limiter = create_app()
 
 
 @jwt.token_in_blocklist_loader
@@ -82,19 +85,6 @@ def check_if_exists_x_request_id_in_request_header():
 
     if not request_id:
         raise RuntimeError('request id is required')
-
-
-@app.before_request
-def rate_limit_for_user():
-    """Проверяет rate limit для пользователя."""
-    from base.low_level import CacheRedis
-    from services.utils import abort_error
-
-    user_key = '{}.{}'.format('user_id', dt.now().minute)
-    number_of_user_requests_per_minute = CacheRedis().set_counter_or_increment(user_key, time=59)
-
-    if int(number_of_user_requests_per_minute) > 10:
-        abort_error('to many request', status=429)
 
 
 if __name__ == '__main__':
