@@ -2,8 +2,9 @@ from typing import Union
 from datetime import timedelta
 
 from .mixins import ValidateUserMixin
-from base.base import BaseAuthService
+from base.base import BaseAuthService, BaseOAuthService
 from tracing import trace
+from core import config
 
 
 class AuthService(BaseAuthService, ValidateUserMixin):
@@ -56,3 +57,13 @@ class AuthService(BaseAuthService, ValidateUserMixin):
             refresh_token,
             additional_claims,
         )
+
+
+class YandexOauthService(BaseOAuthService):
+    """Yandex oauth"""
+    client_id = config.YANDEX_CLIENT_ID,
+    client_secret = config.YANDEX_CLIENT_SECRET
+    name = config.YANDEX_NAME,
+    authorize_url = config.YANDEX_AUTHORIZE_URL
+    access_token_url = config.YANDEX_ACCESS_TOKEN_URL
+    base_url = config.YANDEX_BASE_URL
