@@ -13,12 +13,16 @@ from flask_jwt_extended import get_jwt
 from rauth import OAuth2Service
 
 from schemas.users import CreateUserSchema
-from services.auth import AuthService
+from services.auth import AuthService, YandexOauthService
 from services.users import UserService
 from services.utils import get_token_from_header
 from core import config
 
 auth_router = Blueprint('auth_router', __name__)
+
+OAUTH_PROVIDERS = {
+    'yandex': YandexOauthService,
+}
 
 
 @auth_router.route('/api/v1/login', methods=('POST',))
@@ -135,12 +139,18 @@ def refresh_tokens(service: AuthService = AuthService()):
     return response, HTTPStatus.OK
 
 
-@auth_router.route('/api/v1/auth/yandex/link', methods=('POST', ))
-def get_auth_yandex_link():
+@auth_router.route('/api/v1/auth/oauth/<str:provider_name>/link', methods=('POST', ))
+def get_oauth_link(provider_name: str):
     """Getting auth link.
         ---
         tags:
           - Auth
+
+        parameters:
+          - in: path
+            name: provider_name
+            required: true
+            type: string
 
         responses:
           200:
@@ -149,26 +159,12 @@ def get_auth_yandex_link():
               name: authorize_link
               type: string
         """
-    yandex_service = OAuth2Service(
-        client_id=os.getenv('YANDEX_CLIENT_ID'),
-        client_secret=os.getenv('YANDEX_CLIENT_SECRET'),
-        name=os.getenv('yandex'),
-        authorize_url=os.getenv('YANDEX_AUTHORIZE_URL'),
-        access_token_url=os.getenv('YANDEX_ACCESS_TOKEN_URL'),
-        base_url=os.getenv('YANDEX_BASE_URL'),
-    )
-
-    params = {
-        'scope': 'login:email',
-        'response_type': 'code',
-        'redirect_uri': os.getenv('YANDEX_REDIRECT_URI'),
-    }
-
-    return {"authorize_link": yandex_service.get_authorize_url(**params)}, HTTPStatus.OK
+    provider = OAUTH_PROVIDERS[provider_name]
+    return provider.get_auth_link(), HTTPStatus.OK
 
 
-@auth_router.route('/api/v1/auth/yandex/redirect_uri', methods=('GET', ))
-def create_user_from_yandex():
+@auth_router.route('/api/v1/auth/oauth/<string:provider_name>/redirect_uri', methods=('GET', ))
+def create_user_from_yandex(provider_name: str):
     """Getting auth link.
         ---
         tags:
@@ -187,32 +183,6 @@ def create_user_from_yandex():
               type: string
         """
     code = request.args['code']
+    provider = OAUTH_PROVIDERS[provider_name]
 
-    yandex_service = OAuth2Service(
-        client_id=os.getenv('YANDEX_CLIENT_ID'),
-        client_secret=os.getenv('YANDEX_CLIENT_SECRET'),
-        name=os.getenv('yandex'),
-        authorize_url=os.getenv('YANDEX_AUTHORIZE_URL'),
-        access_token_url=os.getenv('YANDEX_ACCESS_TOKEN_URL'),
-        base_url=os.getenv('YANDEX_BASE_URL'),
-    )
-
-    access_token = yandex_service.get_access_token(
-        data={'code': code, 'grant_type': 'authorization_code'},
-        decoder=json.loads,
-    )
-
-    with requests.get(
-            url='https://login.yandex.ru/info',
-            headers={'Authorization': f'OAuth {access_token}'},
-    ) as response:
-        login = response.json()['login']
-        data = CreateUserSchema(login=login, password=str(uuid.uuid4()))
-
-    try:
-        tokens = AuthService().login_user(data.login, data.password, 'oauth')
-    except HTTPException:
-        UserService().create(data)
-        tokens = AuthService().login_user(data.login, data.password, 'oauth')
-
-    return {'tokens': tokens}, HTTPStatus.OK
+    return provider.create_new_user(code), HTTPStatus.OK
